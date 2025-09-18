@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opções</title>
+    <!-- Inclui a biblioteca Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo da caixa de mensagem, inicialmente oculta */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Caixa de mensagem flutuante -->
+    <div id="messageBox" class="message-box bg-green-500 text-white">
+        Opção salva com sucesso!
+    </div>
+
+    <!-- Container principal da aplicação -->
+    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center">
+        <!-- Título -->
+        <h1 class="text-4xl font-extrabold text-slate-800 mb-2">Opções</h1>
+        
+        <!-- Rótulo de status dinâmico -->
+        <p id="statusLabel" class="text-lg font-bold text-slate-500 mb-6 transition-colors duration-300"></p>
+
+        <!-- Container para a entrada de texto e botão -->
+        <div id="textInputContainer">
+            <div class="flex items-center w-full mb-4">
+                <span id="prefixLabel" class="hidden text-xl font-bold text-slate-500 mr-2"></span>
+                <input type="text" id="optionInput" class="flex-grow h-10 p-2 text-xl text-slate-700 placeholder-slate-400 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300" maxlength="8" placeholder="Escreva a sua opção aqui...">
+                <span id="suffixLabel" class="hidden text-xl font-bold text-slate-500 ml-2"></span>
+            </div>
+            <button id="enterButton" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Enter
+            </button>
+        </div>
+
+        <!-- Containers para os botões de escolha -->
+        <div id="choiceButtons1" class="hidden flex flex-col space-y-4 w-full">
+            <button class="choice-button w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2" data-choice="alta">Alta</button>
+            <button class="choice-button w-full bg-red-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2" data-choice="baixa">Baixa</button>
+        </div>
+        
+        <div id="choiceButtons2" class="hidden flex flex-col space-y-4 w-full">
+            <button class="choice-button w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2" data-choice="compra">Compra</button>
+            <button class="choice-button w-full bg-red-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2" data-choice="venda">Venda</button>
+        </div>
+        
+        <div id="choiceButtons3" class="hidden flex flex-col space-y-4 w-full">
+            <button class="choice-button w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2" data-choice="call">Call</button>
+            <button class="choice-button w-full bg-red-600 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2" data-choice="put">Put</button>
+        </div>
+
+        <!-- Container para a lista final e o botão de refazer -->
+        <div id="resultsContainer" class="hidden flex flex-col items-center w-full">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4">Resumo</h2>
+            <ul id="resultsList" class="w-full text-left space-y-2 mb-6"></ul>
+            <button id="redoButton" class="w-full bg-gray-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:bg-gray-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                Refazer
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Obtém referências para os elementos do DOM
+        const inputField = document.getElementById('optionInput');
+        const enterButton = document.getElementById('enterButton');
+        const messageBox = document.getElementById('messageBox');
+        const statusLabel = document.getElementById('statusLabel');
+        const prefixLabel = document.getElementById('prefixLabel');
+        const suffixLabel = document.getElementById('suffixLabel');
+        const textInputContainer = document.getElementById('textInputContainer');
+        const choiceButtons1 = document.getElementById('choiceButtons1');
+        const choiceButtons2 = document.getElementById('choiceButtons2');
+        const choiceButtons3 = document.getElementById('choiceButtons3');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsList = document.getElementById('resultsList');
+        const redoButton = document.getElementById('redoButton');
+
+        // Sequência de palavras de status
+        const statusSequence = [
+            'Ativo', 'Delta', 'Gamma', 'Theta', 'Vega', 'VI', 'Intrínseco', 'Extrínseco', 
+            'Prêmio', 'Strike', 'Valor do Ativo', 'Vencimento', 'IVR', 'Percentil'
+        ];
+        
+        // Dados salvos
+        const savedData = {};
+        
+        // Estado inicial
+        let currentStateIndex = 0;
+
+        // Função para atualizar a interface com base no estado atual
+        function updateUI() {
+            // Limpa as labels de prefixo e sufixo
+            prefixLabel.textContent = '';
+            suffixLabel.textContent = '';
+            prefixLabel.classList.add('hidden');
+            suffixLabel.classList.add('hidden');
+            
+            // Oculta todos os containers
+            textInputContainer.classList.add('hidden');
+            choiceButtons1.classList.add('hidden');
+            choiceButtons2.classList.add('hidden');
+            choiceButtons3.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+
+            if (currentStateIndex < statusSequence.length) {
+                // Etapas de entrada de texto
+                statusLabel.textContent = statusSequence[currentStateIndex];
+                textInputContainer.classList.remove('hidden');
+                inputField.focus(); // Foca no campo de texto
+
+                const currentStatus = statusSequence[currentStateIndex];
+                if (currentStatus === 'VI') {
+                    suffixLabel.textContent = '%';
+                    suffixLabel.classList.remove('hidden');
+                    inputField.maxLength = 8;
+                    inputField.oninput = null;
+                } else if (['Intrínseco', 'Extrínseco', 'Prêmio', 'Strike', 'Valor do Ativo'].includes(currentStatus)) {
+                    prefixLabel.textContent = 'R$';
+                    prefixLabel.classList.remove('hidden');
+                    inputField.maxLength = 8;
+                    inputField.oninput = null;
+                } else if (currentStatus === 'Vencimento') {
+                    suffixLabel.textContent = 'dias';
+                    suffixLabel.classList.remove('hidden');
+                    inputField.maxLength = 2; // Limita a 2 caracteres
+                    inputField.oninput = (event) => {
+                        event.target.value = event.target.value.replace(/[^0-9]/g, ''); // Permite apenas números
+                    };
+                } else {
+                    inputField.maxLength = 8;
+                    inputField.oninput = null;
+                }
+            } else if (currentStateIndex === statusSequence.length) {
+                // Estado 1 (após Percentil) - Exibe botões de escolha
+                statusLabel.textContent = 'Escolha um tipo:';
+                choiceButtons1.classList.remove('hidden');
+            } else if (currentStateIndex === statusSequence.length + 1) {
+                // Estado 2 (após Alta/Baixa) - Exibe botões de Compra/Venda
+                statusLabel.textContent = 'Escolha uma ação:';
+                choiceButtons2.classList.remove('hidden');
+            } else if (currentStateIndex === statusSequence.length + 2) {
+                // Estado 3 (após Compra/Venda) - Exibe botões de Call/Put
+                statusLabel.textContent = 'Escolha uma opção:';
+                choiceButtons3.classList.remove('hidden');
+            } else {
+                // Reinicia o processo
+                displayResults();
+            }
+        }
+        
+        // Função para exibir a lista final
+        function displayResults() {
+            statusLabel.textContent = '';
+            resultsContainer.classList.remove('hidden');
+            resultsList.innerHTML = ''; // Limpa a lista
+            
+            // Cria a lista a partir dos dados salvos
+            const dataToDisplay = [
+                ...statusSequence.map(status => ({ label: status, value: savedData[status] })),
+                { label: 'Tipo', value: savedData.choice1 },
+                { label: 'Ação', value: savedData.choice2 },
+                { label: 'Opção', value: savedData.choice3 }
+            ];
+
+            dataToDisplay.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-100 p-3 rounded-md shadow-sm';
+                li.innerHTML = `<span class="font-bold text-slate-700">${item.label}:</span> <span class="text-slate-600">${item.value}</span>`;
+                resultsList.appendChild(li);
+            });
+        }
+        
+        // Função para reiniciar o aplicativo
+        function resetApp() {
+            currentStateIndex = 0;
+            for (const key in savedData) {
+                delete savedData[key];
+            }
+            updateUI();
+        }
+
+        // Inicializa a UI
+        updateUI();
+
+        // Adiciona um listener de evento para o clique do botão "Enter"
+        enterButton.addEventListener('click', () => {
+            let userText = inputField.value;
+            const currentStatus = statusSequence[currentStateIndex];
+            
+            // Converte a entrada para maiúscula se a etapa for 'Ativo'
+            if (currentStatus === 'Ativo') {
+                userText = userText.toUpperCase();
+            }
+
+            savedData[currentStatus] = userText.trim() === '' ? '(vazio)' : userText;
+            console.log(`Texto salvo para a opção "${currentStatus}":`, savedData[currentStatus]);
+            
+            // Limpa a caixa de texto
+            inputField.value = "";
+            
+            // Exibe a mensagem de sucesso
+            messageBox.classList.add('show');
+            
+            // Oculta a mensagem após 3 segundos
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+            
+            // Avança para o próximo estado
+            currentStateIndex++;
+            updateUI();
+        });
+
+        // Adiciona um listener para a tecla "Enter" na caixa de texto
+        inputField.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                enterButton.click();
+            }
+        });
+
+        // Adiciona um listener de evento para os botões de escolha
+        document.querySelectorAll('.choice-button').forEach(button => {
+            button.addEventListener('click', (event) => {
+                const choice = event.target.dataset.choice;
+                const buttonContainerId = event.target.closest('div').id;
+                
+                if (buttonContainerId === 'choiceButtons1') {
+                    savedData.choice1 = choice;
+                } else if (buttonContainerId === 'choiceButtons2') {
+                    savedData.choice2 = choice;
+                } else if (buttonContainerId === 'choiceButtons3') {
+                    savedData.choice3 = choice;
+                }
+                
+                console.log(`Escolha selecionada: ${choice}`);
+                
+                // Exibe a mensagem de sucesso
+                messageBox.textContent = `Escolha "${choice}" salva!`;
+                messageBox.classList.add('show');
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                    messageBox.textContent = "Opção salva com sucesso!"; // Restaura o texto original
+                }, 3000);
+
+                currentStateIndex++;
+                updateUI();
+            });
+        });
+        
+        // Listener para o botão "Refazer"
+        redoButton.addEventListener('click', resetApp);
+    </script>
+</body>
+</html>
